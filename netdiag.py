@@ -3,7 +3,7 @@
 NetDiag - Network Diagnostics CLI Tool
 Professional WLAN/Network latency monitoring and analysis tool.
 
-Author: [Your Name]
+Author: m0h1nd4
 License: MIT
 """
 
