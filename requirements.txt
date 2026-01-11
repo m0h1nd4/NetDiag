@@ -1,0 +1,9 @@
+# NetDiag - Optional Dependencies
+# Core functionality requires no external packages (stdlib only)
+
+# Enhanced terminal output (colored tables, progress indicators)
+rich>=13.0.0
+
+# For analysis scripts (optional)
+# pandas>=2.0.0
+# matplotlib>=3.7.0
