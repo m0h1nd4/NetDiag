@@ -30,7 +30,7 @@ Differentiates between local network (WLAN/LAN) issues and ISP problems through 
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/netdiag.git
+git clone https://github.com/m0h1nd4/NetDiag.git
 cd netdiag
 
 # Optional: Install rich for enhanced terminal output (desktop only)
