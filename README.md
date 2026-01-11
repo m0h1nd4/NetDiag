@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-lightgrey.svg)]()
 
 **High-performance network diagnostics CLI tool for latency monitoring, packet loss analysis, and connection troubleshooting.**
 
@@ -13,9 +14,17 @@ Differentiates between local network (WLAN/LAN) issues and ISP problems through 
 - **Parallel execution** – Concurrent pings via ThreadPoolExecutor
 - **Real-time statistics** – Rolling min/max/avg, jitter (RFC 3550), packet loss
 - **Multiple output formats** – CSV, JSON, JSON Lines (JSONL)
-- **Cross-platform** – Windows, Linux, macOS
+- **Cross-platform** – Windows, Linux, macOS, **Android (Pydroid/Termux)**
 - **Zero dependencies** – Pure Python stdlib (optional: `rich` for enhanced output)
 - **Configurable thresholds** – Custom latency limits, packet sizes, intervals
+- **Mobile version** – TCP-based ping without root requirements
+
+## Available Versions
+
+| Script | Platform | Method | Root Required |
+|--------|----------|--------|---------------|
+| `netdiag.py` | Windows, Linux, macOS | ICMP Ping | No (Windows/macOS), sometimes (Linux) |
+| `netdiag_mobile.py` | Android (Pydroid, Termux), iOS | TCP Connect | **No** |
 
 ## Installation
 
@@ -24,20 +33,32 @@ Differentiates between local network (WLAN/LAN) issues and ISP problems through 
 git clone https://github.com/YOUR_USERNAME/netdiag.git
 cd netdiag
 
-# Optional: Install rich for enhanced terminal output
+# Optional: Install rich for enhanced terminal output (desktop only)
 pip install rich
 
 # Make executable (Linux/macOS)
-chmod +x netdiag.py
+chmod +x netdiag.py netdiag_mobile.py
 ```
 
 ### Requirements
 
 - Python 3.8+
 - No external dependencies (stdlib only)
-- Optional: `rich` for colored tables and progress indicators
+- Optional: `rich` for colored tables and progress indicators (desktop)
+
+### Files
+
+| File | Description |
+|------|-------------|
+| `netdiag.py` | Desktop version (ICMP ping) |
+| `netdiag_mobile.py` | Mobile version (TCP connect, no root) |
+| `README.md` | This documentation |
+| `LICENSE` | MIT License |
+| `requirements.txt` | Optional dependencies |
 
 ## Quick Start
+
+### Desktop (Windows/Linux/macOS)
 
 ```bash
 # Basic monitoring (default: 1s interval, CSV output)
@@ -53,7 +74,27 @@ python netdiag.py -i 0.5 -d 3600 -o session.csv
 python netdiag.py --threshold 50 --export-stats stats.json -o log.csv
 ```
 
+### Mobile (Android - Pydroid/Termux)
+
+```bash
+# Basic test (external targets only)
+python netdiag_mobile.py
+
+# With gateway test (get IP from WLAN settings)
+python netdiag_mobile.py -g 192.168.178.1    # Fritz!Box
+python netdiag_mobile.py -g 192.168.1.1      # Standard router
+python netdiag_mobile.py -g 192.168.0.1      # Some ISP routers
+
+# Log to Download folder
+python netdiag_mobile.py -g 192.168.178.1 -o /storage/emulated/0/Download/wlan_log.csv
+
+# 5 minute test session
+python netdiag_mobile.py -g 192.168.1.1 -d 300 -o network_test.csv
+```
+
 ## Usage
+
+### Desktop Version (`netdiag.py`)
 
 ```
 usage: netdiag [-h] [-V] [-t IP [IP ...]] [-g IP] [-i SEC] [--timeout SEC]
@@ -88,6 +129,26 @@ Performance:
 Commands:
   --detect-gateway            Detect and print gateway IP, then exit
   --export-stats FILE         Export final statistics to JSON file
+```
+
+### Mobile Version (`netdiag_mobile.py`)
+
+```
+usage: netdiag_mobile.py [-h] [-V] [-g GATEWAY] [--gateway-port GATEWAY_PORT]
+                         [-i INTERVAL] [-t TIMEOUT] [--threshold THRESHOLD]
+                         [-o OUTPUT] [-f {csv,jsonl}] [-d DURATION]
+
+Network Diagnostics for Android/Pydroid (no root required)
+
+Options:
+  -g, --gateway GATEWAY       Gateway/Router IP (from WLAN settings)
+  --gateway-port PORT         Gateway port to test (default: 80)
+  -i, --interval SEC          Test interval in seconds (default: 1.0)
+  -t, --timeout SEC           Connection timeout (default: 2.0)
+  --threshold MS              Latency threshold in ms (default: 100)
+  -o, --output FILE           Output file path
+  -f, --format {csv,jsonl}    Output format (default: csv)
+  -d, --duration SEC          Run duration in seconds
 ```
 
 ## Status Codes
@@ -359,6 +420,87 @@ print(f"\nFailure events: {len(failures)}")
 └─────────────────────────────────────────────────────────────┘
 ```
 
+---
+
+## Mobile Version Details
+
+### Why a Separate Mobile Version?
+
+Android and iOS restrict raw socket access (ICMP ping) to root/system apps. The mobile version uses **TCP Connect** instead, which:
+
+- ✅ Works without root privileges
+- ✅ Works in Pydroid, Termux, Pythonista
+- ✅ Measures real connection latency
+- ⚠️ Latencies are ~1-5ms higher than ICMP (TCP handshake overhead)
+- ⚠️ Gateway IP must be set manually (no auto-detection)
+
+### How TCP Ping Works
+
+Instead of sending ICMP echo requests, the mobile version:
+
+1. Opens a TCP socket to the target
+2. Measures time to complete the TCP handshake (SYN → SYN-ACK)
+3. Closes the connection immediately
+
+This accurately reflects network latency and availability.
+
+### Default Test Targets
+
+| Name | Host | Port | Purpose |
+|------|------|------|---------|
+| `google` | 8.8.8.8 | 53 | Google DNS (UDP/TCP) |
+| `cloudflare` | 1.1.1.1 | 53 | Cloudflare DNS |
+| `google_web` | 142.250.185.78 | 443 | Google HTTPS |
+| `cloudflare_web` | 104.16.132.229 | 443 | Cloudflare HTTPS |
+
+### Finding Your Gateway IP (Android)
+
+1. **Settings** → **WLAN** / **Wi-Fi**
+2. Tap your connected network name
+3. Look for **Gateway**, **Router**, or **Default Gateway**
+
+Common gateway addresses:
+- `192.168.178.1` – Fritz!Box
+- `192.168.1.1` – Most routers (TP-Link, Netgear, ASUS)
+- `192.168.0.1` – Some ISP routers (Vodafone, Unity Media)
+- `192.168.2.1` – Some Telekom routers
+- `10.0.0.1` – Some enterprise/mesh networks
+
+### Pydroid Setup
+
+1. Install **Pydroid 3** from Play Store
+2. Copy `netdiag_mobile.py` to your device
+3. Open in Pydroid and run
+4. For file output, use paths like:
+   - `/storage/emulated/0/Download/log.csv`
+   - `/sdcard/Download/log.csv`
+
+### Termux Setup
+
+```bash
+pkg install python
+python netdiag_mobile.py -g 192.168.1.1
+```
+
+### Comparison: Desktop vs Mobile
+
+| Feature | Desktop (`netdiag.py`) | Mobile (`netdiag_mobile.py`) |
+|---------|------------------------|------------------------------|
+| Ping Method | ICMP | TCP Connect |
+| Root Required | No* | **No** |
+| Gateway Detection | Automatic | Manual (`-g` flag) |
+| Custom Targets | Yes (`-t`) | Predefined set |
+| Packet Size | Configurable | N/A (TCP) |
+| TTL Reporting | Yes | No |
+| Jitter Calculation | RFC 3550 | Basic |
+| Output Formats | CSV, JSON, JSONL | CSV, JSONL |
+| Statistics Export | JSON file | Console only |
+| Rich Terminal | Optional | No |
+
+\* Linux may require `cap_net_raw` capability or root for ICMP
+
+---
+
 ## Platform Notes
 
 ### Windows
@@ -373,6 +515,12 @@ print(f"\nFailure events: {len(failures)}")
 ### macOS
 - Uses `route -n get default` for gateway detection
 - BSD ping syntax
+
+### Android (Pydroid/Termux)
+- Use `netdiag_mobile.py` (TCP-based)
+- No root required
+- Gateway must be specified manually
+- File paths: `/storage/emulated/0/` or `/sdcard/`
 
 ## Contributing
 
